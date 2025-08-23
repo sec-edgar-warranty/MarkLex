@@ -236,6 +236,12 @@ def lexicon_tab_content():
     """Lexicon tab content wrapped in fragment to prevent tab switching"""
     st.header("Lexicon Creation")
     
+    # Initialize session state for lexicon data
+    if 'lexicon_data' not in st.session_state:
+        st.session_state.lexicon_data = None
+    if 'lexicon_term' not in st.session_state:
+        st.session_state.lexicon_term = ""
+    
     # Quick instructions at the top
     st.info("💡 **Quick Start**: Enter a unigram (e.g., 'marketing') or bigram (e.g., 'profit margin') below, set the number of words, and click 'Create Lexicon' to generate semantically similar terms.")
     
@@ -258,9 +264,20 @@ def lexicon_tab_content():
             step=5
         )
         
-        run_lexicon = st.button("Create Lexicon", type="primary")
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            run_lexicon = st.button("Create Lexicon", type="primary")
+        with col_btn2:
+            reset_lexicon = st.button("Reset", type="secondary")
     
     with col2:
+        # Handle reset
+        if reset_lexicon:
+            st.session_state.lexicon_data = None
+            st.session_state.lexicon_term = ""
+            st.success("Lexicon data cleared!")
+        
+        # Handle lexicon creation
         if run_lexicon and term:
             num_words = len(term.split())
             model_type = 'uni' if num_words == 1 else 'bi'
@@ -270,19 +287,29 @@ def lexicon_tab_content():
             
             if 'Error' in result.columns:
                 st.error(result['Error'].iloc[0])
+                st.session_state.lexicon_data = None
             else:
-                st.dataframe(result, use_container_width=True)
-                
-                # Download button
-                csv = result.to_csv(index=False)
-                st.download_button(
-                    label="Download Lexicon",
-                    data=csv,
-                    file_name=f"lexicon_{term}_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
-                    mime="text/csv"
-                )
+                # Store in session state
+                st.session_state.lexicon_data = result
+                st.session_state.lexicon_term = term
+        
         elif run_lexicon:
             st.warning("Please enter a term to create a lexicon.")
+        
+        # Display lexicon data (persistent)
+        if st.session_state.lexicon_data is not None:
+            st.dataframe(st.session_state.lexicon_data, use_container_width=True)
+            
+            # Download and Reset buttons side by side
+            col_dl, col_reset = st.columns([2, 1])
+            with col_dl:
+                csv = st.session_state.lexicon_data.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download Lexicon",
+                    data=csv,
+                    file_name=f"lexicon_{st.session_state.lexicon_term}_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv"
+                )
         else:
             st.info("The lexicon will appear here.")
     
@@ -348,6 +375,12 @@ def main():
     with tab3:
         st.header("Text Analysis")
         
+        # Initialize session state for text analysis data
+        if 'analysis_data' not in st.session_state:
+            st.session_state.analysis_data = None
+        if 'analysis_text_input' not in st.session_state:
+            st.session_state.analysis_text_input = ""
+        
         # Instructions
         st.subheader("Instructions")
         st.info("""
@@ -365,31 +398,48 @@ def main():
             placeholder="Paste your text here for analysis..."
         )
         
-        col1, col2 = st.columns([1, 4])
-        
+        # Buttons
+        col1, col2 = st.columns([2, 1])
         with col1:
             analyze_button = st.button("Analyze Text", type="primary")
+        with col2:
+            reset_analysis = st.button("Reset Analysis", type="secondary")
         
+        # Handle reset
+        if reset_analysis:
+            st.session_state.analysis_data = None
+            st.session_state.analysis_text_input = ""
+            st.success("Analysis data cleared!")
+        
+        # Handle analysis
         if analyze_button and text_input:
             with st.spinner("Analyzing text..."):
                 result = analyze_text(text_input, lexicon, stop_words)
             
-            st.subheader("Analysis Results")
-            st.dataframe(result, use_container_width=True)
-            
-            # Download button
-            csv = result.to_csv(index=False)
-            st.download_button(
-                label="Download Data",
-                data=csv,
-                file_name=f"text_analysis_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv"
-            )
+            # Store in session state
+            st.session_state.analysis_data = result
+            st.session_state.analysis_text_input = text_input[:100] + "..." if len(text_input) > 100 else text_input
             
         elif analyze_button:
             st.warning("Please enter some text to analyze.")
+        
+        # Display analysis results (persistent)
+        if st.session_state.analysis_data is not None:
+            st.subheader("Analysis Results")
+            st.dataframe(st.session_state.analysis_data, use_container_width=True)
+            
+            # Download button
+            col_dl, col_space = st.columns([2, 2])
+            with col_dl:
+                csv = st.session_state.analysis_data.to_csv(index=False)
+                st.download_button(
+                    label="📥 Download Analysis Data",
+                    data=csv,
+                    file_name=f"text_analysis_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv"
+                )
         else:
-            st.info("Enter text and click 'Analyze Text' to start.")
+            st.info("Analysis results will appear here.")
 
 if __name__ == "__main__":
     main()
