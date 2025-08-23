@@ -231,6 +231,102 @@ Use unigrams (single words) or bigrams (two words) to generate related terms bas
 ## Text Analysis Tab
 Analyze text for predefined business dimensions including Marketing, ESG, Risk, and more."""
 
+@st.fragment
+def lexicon_tab_content():
+    """Lexicon tab content wrapped in fragment to prevent tab switching"""
+    st.header("Lexicon Creation")
+    
+    # Quick instructions at the top
+    st.info("💡 **Quick Start**: Enter a unigram (e.g., 'marketing') or bigram (e.g., 'profit margin') below, set the number of words, and click 'Create Lexicon' to generate semantically similar terms.")
+    
+    # Create columns for inputs
+    col1, col2 = st.columns([1, 3])
+    
+    with col1:
+        # Inputs
+        term = st.text_input(
+            "Add a term (max 2 words):",
+            placeholder="sustainability",
+            help="Enter a single word or two words separated by a space"
+        )
+        
+        n_words = st.slider(
+            "Number of words:",
+            min_value=10,
+            max_value=100,
+            value=20,
+            step=5
+        )
+        
+        run_lexicon = st.button("Create Lexicon", type="primary")
+    
+    with col2:
+        if run_lexicon and term:
+            num_words = len(term.split())
+            model_type = 'uni' if num_words == 1 else 'bi'
+            
+            with st.spinner("Creating lexicon..."):
+                result = create_lexicon_from_word(term, n_words, model_type)
+            
+            if 'Error' in result.columns:
+                st.error(result['Error'].iloc[0])
+            else:
+                st.dataframe(result, use_container_width=True)
+                
+                # Download button
+                csv = result.to_csv(index=False)
+                st.download_button(
+                    label="Download Lexicon",
+                    data=csv,
+                    file_name=f"lexicon_{term}_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv"
+                )
+        elif run_lexicon:
+            st.warning("Please enter a term to create a lexicon.")
+        else:
+            st.info("The lexicon will appear here.")
+    
+    # Detailed instructions - collapsed by default
+    st.subheader("📚 Detailed Instructions")
+    with st.expander("6-Step Lexicon Development Process", expanded=False):
+        st.markdown("""
+        **Follow this systematic approach for building high-quality lexicons:**
+        
+        **Step 1: Enter Construct**
+        - Enter a unigram (single term: marketing, profit, privacy) or bigram (two terms: profit margin, customer satisfaction)
+        - Use domain-specific terminology relevant to your research construct
+        
+        **Step 2: Export Top-N Neighbors**
+        - Start with N=50 similar words to get initial coverage
+        - Expand to N=100 if recall seems thin or you need broader coverage
+        - Download the results as CSV for systematic review
+        
+        **Step 3: Iterative Expansion**
+        - Promote good neighbors to seeds for the next iteration
+        - Re-run the process 1–2 times to widen coverage
+        - Domain-specific variants emerge quickly through this iterative approach
+        
+        **Step 4: Prune & Disambiguate**
+        - Remove irrelevant or ambiguous terms from your lexicon
+        - Prefer bigrams where needed to reduce ambiguity
+        - Focus on terms that clearly represent your target construct
+        
+        **Step 5: Validation**
+        - Conduct human review with Inter-Annotator Agreement (IAA) on a sentence sample
+        - Report key metrics: Accuracy, Precision, Recall, and F1 score
+        - Document validation methodology and results
+        
+        **Step 6: Documentation & Versioning**
+        - Version your final lexicon (e.g., v1.0, v1.1)
+        - Include provenance notes: seed words used, app version, source corpus
+        - Maintain documentation for reproducibility and future updates
+        
+        **Troubleshooting**
+        
+        If the app fails to return results, try variations of your search terms or related concepts.
+        Not all terms may be present in the vocabulary - experiment with synonyms or broader/narrower terms.
+        """)
+
 def main():
     # Initialize data
     stop_words = setup_nltk()
@@ -247,111 +343,7 @@ def main():
         st.markdown(welcome_content)
     
     with tab2:
-        st.header("Lexicon Creation")
-        
-        # Quick instructions at the top
-        st.info("💡 **Quick Start**: Enter a unigram (e.g., 'marketing') or bigram (e.g., 'profit margin') below, set the number of words, and click 'Create Lexicon' to generate semantically similar terms.")
-        
-        # Create columns for inputs
-        col1, col2 = st.columns([1, 3])
-        
-        with col1:
-            # Inputs
-            term = st.text_input(
-                "Add a term (max 2 words):",
-                placeholder="sustainability",
-                help="Enter a single word or two words separated by a space"
-            )
-            
-            n_words = st.slider(
-                "Number of words:",
-                min_value=10,
-                max_value=100,
-                value=20,
-                step=5
-            )
-            
-            run_lexicon = st.button("Create Lexicon", type="primary")
-        
-        with col2:
-            if run_lexicon and term:
-                num_words = len(term.split())
-                model_type = 'uni' if num_words == 1 else 'bi'
-                
-                # Add JavaScript to maintain tab focus during processing
-                st.markdown("""
-                <script>
-                // Try to maintain Lexicon tab focus
-                setTimeout(function() {
-                    var buttons = document.querySelectorAll('[data-baseweb="tab"] button');
-                    if (buttons.length >= 2) {
-                        buttons[1].click(); // Click on Lexicon tab (index 1)
-                    }
-                }, 100);
-                </script>
-                """, unsafe_allow_html=True)
-                
-                with st.spinner("Creating lexicon..."):
-                    result = create_lexicon_from_word(term, n_words, model_type)
-                
-                if 'Error' in result.columns:
-                    st.error(result['Error'].iloc[0])
-                else:
-                    st.dataframe(result, use_container_width=True)
-                    
-                    # Download button
-                    csv = result.to_csv(index=False)
-                    st.download_button(
-                        label="Download Lexicon",
-                        data=csv,
-                        file_name=f"lexicon_{term}_{datetime.datetime.now().strftime('%Y%m%d')}.csv",
-                        mime="text/csv"
-                    )
-            elif run_lexicon:
-                st.warning("Please enter a term to create a lexicon.")
-            else:
-                st.info("The lexicon will appear here.")
-        
-        # Detailed instructions - collapsed by default
-        st.subheader("📚 Detailed Instructions")
-        with st.expander("6-Step Lexicon Development Process", expanded=False):
-            st.markdown("""
-            **Follow this systematic approach for building high-quality lexicons:**
-            
-            **Step 1: Enter Construct**
-            - Enter a unigram (single term: marketing, profit, privacy) or bigram (two terms: profit margin, customer satisfaction)
-            - Use domain-specific terminology relevant to your research construct
-            
-            **Step 2: Export Top-N Neighbors**
-            - Start with N=50 similar words to get initial coverage
-            - Expand to N=100 if recall seems thin or you need broader coverage
-            - Download the results as CSV for systematic review
-            
-            **Step 3: Iterative Expansion**
-            - Promote good neighbors to seeds for the next iteration
-            - Re-run the process 1–2 times to widen coverage
-            - Domain-specific variants emerge quickly through this iterative approach
-            
-            **Step 4: Prune & Disambiguate**
-            - Remove irrelevant or ambiguous terms from your lexicon
-            - Prefer bigrams where needed to reduce ambiguity
-            - Focus on terms that clearly represent your target construct
-            
-            **Step 5: Validation**
-            - Conduct human review with Inter-Annotator Agreement (IAA) on a sentence sample
-            - Report key metrics: Accuracy, Precision, Recall, and F1 score
-            - Document validation methodology and results
-            
-            **Step 6: Documentation & Versioning**
-            - Version your final lexicon (e.g., v1.0, v1.1)
-            - Include provenance notes: seed words used, app version, source corpus
-            - Maintain documentation for reproducibility and future updates
-            
-            **Troubleshooting**
-            
-            If the app fails to return results, try variations of your search terms or related concepts.
-            Not all terms may be present in the vocabulary - experiment with synonyms or broader/narrower terms.
-            """)
+        lexicon_tab_content()  # Call the fragment function
     
     with tab3:
         st.header("Text Analysis")
@@ -401,3 +393,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
+    # Fix for tab switching issue - force initial rerun to stabilize state
+    if "initial_rerun_done" not in st.session_state:
+        st.session_state.initial_rerun_done = True
+        st.rerun()
