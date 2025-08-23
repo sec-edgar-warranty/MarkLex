@@ -236,6 +236,10 @@ def main():
     stop_words = setup_nltk()
     lexicon = load_lexicon()
     
+    # Initialize session state for active tab persistence
+    if 'active_tab' not in st.session_state:
+        st.session_state.active_tab = 0
+    
     # Load markdown content
     welcome_content = read_markdown_file("welcome.md")
     instructions_content = read_markdown_file("instructions.md")
@@ -249,46 +253,13 @@ def main():
     with tab2:
         st.header("Lexicon Creation")
         
-        # Instructions
-        st.subheader("Instructions")
-        with st.expander("Lexicon Development Process", expanded=True):
-            st.markdown("""
-            **Follow this systematic approach for building high-quality lexicons:**
-            
-            **Step 1: Enter Construct**
-            - Enter a unigram (single term: marketing, profit, privacy) or bigram (two terms: profit margin, customer satisfaction)
-            - Use domain-specific terminology relevant to your research construct
-            
-            **Step 2: Export Top-N Neighbors**
-            - Start with N=50 similar words to get initial coverage
-            - Expand to N=100 if recall seems thin or you need broader coverage
-            - Download the results as CSV for systematic review
-            
-            **Step 3: Iterative Expansion**
-            - Promote good neighbors to seeds for the next iteration
-            - Re-run the process 1–2 times to widen coverage
-            - Domain-specific variants emerge quickly through this iterative approach
-            
-            **Step 4: Prune & Disambiguate**
-            - Remove irrelevant or ambiguous terms from your lexicon
-            - Prefer bigrams where needed to reduce ambiguity
-            - Focus on terms that clearly represent your target construct
-            
-            **Step 5: Validation**
-            - Conduct human review with Inter-Annotator Agreement (IAA) on a sentence sample
-            - Report key metrics: Accuracy, Precision, Recall, and F1 score
-            - Document validation methodology and results
-            
-            **Step 6: Documentation & Versioning**
-            - Version your final lexicon (e.g., v1.0, v1.1)
-            - Include provenance notes: seed words used, app version, source corpus
-            - Maintain documentation for reproducibility and future updates
-            
-            **Troubleshooting**
-            
-            If the app fails to return results, try variations of your search terms or related concepts.
-            Not all terms may be present in the vocabulary - experiment with synonyms or broader/narrower terms.
-            """)
+        # Main application area with prominent styling
+        st.markdown("""
+        <div style="background-color: #f0f8ff; padding: 20px; border-radius: 10px; border: 2px solid #4682b4; margin-bottom: 20px;">
+        """, unsafe_allow_html=True)
+        
+        # Quick instructions at the top
+        st.info("💡 **Quick Start**: Enter a unigram (e.g., 'marketing') or bigram (e.g., 'profit margin') below, set the number of words, and click 'Create Lexicon' to generate semantically similar terms.")
         
         # Create columns for inputs
         col1, col2 = st.columns([1, 3])
@@ -336,6 +307,50 @@ def main():
                 st.warning("Please enter a term to create a lexicon.")
             else:
                 st.info("Enter a term and click 'Create Lexicon' to start.")
+        
+        # Close the main app styling div
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+        # Detailed instructions - collapsed by default
+        st.subheader("📚 Detailed Instructions")
+        with st.expander("6-Step Lexicon Development Process", expanded=False):
+            st.markdown("""
+            **Follow this systematic approach for building high-quality lexicons:**
+            
+            **Step 1: Enter Construct**
+            - Enter a unigram (single term: marketing, profit, privacy) or bigram (two terms: profit margin, customer satisfaction)
+            - Use domain-specific terminology relevant to your research construct
+            
+            **Step 2: Export Top-N Neighbors**
+            - Start with N=50 similar words to get initial coverage
+            - Expand to N=100 if recall seems thin or you need broader coverage
+            - Download the results as CSV for systematic review
+            
+            **Step 3: Iterative Expansion**
+            - Promote good neighbors to seeds for the next iteration
+            - Re-run the process 1–2 times to widen coverage
+            - Domain-specific variants emerge quickly through this iterative approach
+            
+            **Step 4: Prune & Disambiguate**
+            - Remove irrelevant or ambiguous terms from your lexicon
+            - Prefer bigrams where needed to reduce ambiguity
+            - Focus on terms that clearly represent your target construct
+            
+            **Step 5: Validation**
+            - Conduct human review with Inter-Annotator Agreement (IAA) on a sentence sample
+            - Report key metrics: Accuracy, Precision, Recall, and F1 score
+            - Document validation methodology and results
+            
+            **Step 6: Documentation & Versioning**
+            - Version your final lexicon (e.g., v1.0, v1.1)
+            - Include provenance notes: seed words used, app version, source corpus
+            - Maintain documentation for reproducibility and future updates
+            
+            **Troubleshooting**
+            
+            If the app fails to return results, try variations of your search terms or related concepts.
+            Not all terms may be present in the vocabulary - experiment with synonyms or broader/narrower terms.
+            """)
     
     with tab3:
         st.header("Text Analysis")
