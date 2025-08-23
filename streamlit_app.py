@@ -74,8 +74,8 @@ def load_embedding_model(model_type='uni'):
     for candidate in candidates:
         if os.path.exists(candidate):
             try:
-                model = Word2Vec.load(candidate)
-                st.success(f"✓ Loaded {model_type} model")
+                with st.spinner(f"Loading {model_type} model... This may take a moment on first run."):
+                    model = Word2Vec.load(candidate)
                 return model
             except Exception as e:
                 st.error(f"Failed to load model: {e}")
@@ -253,11 +253,6 @@ def main():
     with tab2:
         st.header("Lexicon Creation")
         
-        # Main application area with prominent styling
-        st.markdown("""
-        <div style="background-color: #f0f8ff; padding: 20px; border-radius: 10px; border: 2px solid #4682b4; margin-bottom: 20px;">
-        """, unsafe_allow_html=True)
-        
         # Quick instructions at the top
         st.info("💡 **Quick Start**: Enter a unigram (e.g., 'marketing') or bigram (e.g., 'profit margin') below, set the number of words, and click 'Create Lexicon' to generate semantically similar terms.")
         
@@ -306,10 +301,7 @@ def main():
             elif run_lexicon:
                 st.warning("Please enter a term to create a lexicon.")
             else:
-                st.info("Enter a term and click 'Create Lexicon' to start.")
-        
-        # Close the main app styling div
-        st.markdown("</div>", unsafe_allow_html=True)
+                st.info("The lexicon will appear here.")
         
         # Detailed instructions - collapsed by default
         st.subheader("📚 Detailed Instructions")
