@@ -417,7 +417,7 @@ def main():
         )
         
         # Buttons
-        col1, col2, col3 = st.columns([1.5, 1.5, 4])
+        col1, col2, col3 = st.columns([1, 1, 3])
         with col1:
             analyze_button = st.button("Analyze Text", type="primary")
         with col2:
