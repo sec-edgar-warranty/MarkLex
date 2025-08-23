@@ -236,10 +236,6 @@ def main():
     stop_words = setup_nltk()
     lexicon = load_lexicon()
     
-    # Initialize session state for active tab persistence
-    if 'active_tab' not in st.session_state:
-        st.session_state.active_tab = 0
-    
     # Load markdown content
     welcome_content = read_markdown_file("welcome.md")
     instructions_content = read_markdown_file("instructions.md")
@@ -281,6 +277,19 @@ def main():
             if run_lexicon and term:
                 num_words = len(term.split())
                 model_type = 'uni' if num_words == 1 else 'bi'
+                
+                # Add JavaScript to maintain tab focus during processing
+                st.markdown("""
+                <script>
+                // Try to maintain Lexicon tab focus
+                setTimeout(function() {
+                    var buttons = document.querySelectorAll('[data-baseweb="tab"] button');
+                    if (buttons.length >= 2) {
+                        buttons[1].click(); // Click on Lexicon tab (index 1)
+                    }
+                }, 100);
+                </script>
+                """, unsafe_allow_html=True)
                 
                 with st.spinner("Creating lexicon..."):
                     result = create_lexicon_from_word(term, n_words, model_type)
