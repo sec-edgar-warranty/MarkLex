@@ -241,6 +241,10 @@ def lexicon_tab_content():
         st.session_state.lexicon_data = None
     if 'lexicon_term' not in st.session_state:
         st.session_state.lexicon_term = ""
+    if 'lexicon_input_term' not in st.session_state:
+        st.session_state.lexicon_input_term = ""
+    if 'lexicon_n_words' not in st.session_state:
+        st.session_state.lexicon_n_words = 20
     
     # Quick instructions at the top
     st.info("💡 **Quick Start**: Enter a unigram (e.g., 'marketing') or bigram (e.g., 'profit margin') below, set the number of words, and click 'Create Lexicon' to generate semantically similar terms.")
@@ -252,16 +256,19 @@ def lexicon_tab_content():
         # Inputs
         term = st.text_input(
             "Add a term (max 2 words):",
+            value=st.session_state.lexicon_input_term,
             placeholder="sustainability",
-            help="Enter a single word or two words separated by a space"
+            help="Enter a single word or two words separated by a space",
+            key="lexicon_term_input"
         )
         
         n_words = st.slider(
             "Number of words:",
             min_value=10,
             max_value=100,
-            value=20,
-            step=5
+            value=st.session_state.lexicon_n_words,
+            step=5,
+            key="lexicon_n_words_slider"
         )
         
         col_btn1, col_btn2 = st.columns(2)
@@ -275,7 +282,14 @@ def lexicon_tab_content():
         if reset_lexicon:
             st.session_state.lexicon_data = None
             st.session_state.lexicon_term = ""
+            st.session_state.lexicon_input_term = ""
+            st.session_state.lexicon_n_words = 20
             st.success("Lexicon data cleared!")
+            st.rerun()
+        
+        # Update session state with current inputs
+        st.session_state.lexicon_input_term = term
+        st.session_state.lexicon_n_words = n_words
         
         # Handle lexicon creation
         if run_lexicon and term:
@@ -380,6 +394,8 @@ def main():
             st.session_state.analysis_data = None
         if 'analysis_text_input' not in st.session_state:
             st.session_state.analysis_text_input = ""
+        if 'analysis_input_text' not in st.session_state:
+            st.session_state.analysis_input_text = ""
         
         # Instructions
         st.subheader("Instructions")
@@ -394,8 +410,10 @@ def main():
         # Text input
         text_input = st.text_area(
             "Input text:",
+            value=st.session_state.analysis_input_text,
             height=150,
-            placeholder="Paste your text here for analysis..."
+            placeholder="Paste your text here for analysis...",
+            key="analysis_text_area"
         )
         
         # Buttons
@@ -409,7 +427,12 @@ def main():
         if reset_analysis:
             st.session_state.analysis_data = None
             st.session_state.analysis_text_input = ""
+            st.session_state.analysis_input_text = ""
             st.success("Analysis data cleared!")
+            st.rerun()
+        
+        # Update session state with current input
+        st.session_state.analysis_input_text = text_input
         
         # Handle analysis
         if analyze_button and text_input:
