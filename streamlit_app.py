@@ -83,8 +83,45 @@ def load_embedding_model(model_type='bi'):
     st.error(f"❌ No embedding model found!")
     return None
 
+DOMAIN_WHITELIST = {
+    'csr', 'esg', 'dei', 'iot', 'ai', 'ml', 'nlp', 'saas', 'paas', 'iaas',
+    'crm', 'erp', 'roi', 'kpi', 'kpis', 'b2b', 'b2c', 'tmt', 'rba', 'ungc',
+    'sdg', 'sdgs', 'ghg', 'ehs', 'hse', 'osha', 'rd'
+}
+
+BRAND_NOISE = {
+    'hyatt', 'carnegie', 'novacron', 'fedex', 'lowes', 'walmart', 'pepsico',
+    'chevron', 'exxon', 'boeing', 'cisco', 'oracle', 'intel', 'microsoft',
+    'apple', 'google', 'amazon', 'medidata', 'medidatas', 'fico', 'guidewire',
+    'spotfire', 'tibco', 'teradata', 'hortonworks', 'cloudera', 'mapr',
+    'hay_group', 'beer_print', 'deep_purple'
+}
+
+VALID_COM_WORDS = {'telecom', 'intercom', 'dotcom', 'sitcom'}
+
+def is_clean_candidate(word, count):
+    """Filter out 10-K website URLs, alphanumeric artifacts, and low-frequency firm-specific brand names."""
+    w_norm = word.lower().strip()
+    if not w_norm or len(w_norm) < 2:
+        return False
+    parts = w_norm.split('_')
+    if w_norm in BRAND_NOISE or any(p in BRAND_NOISE for p in parts):
+        return False
+    # Filter out URLs, domains (.com/.org/.gov/.edu/.net flattened during preprocessing), and digits
+    if re.search(r'(^www|http|https|mailto|ftp|\d)', w_norm):
+        return False
+    for p in parts:
+        if p.endswith(('com', 'org', 'gov', 'edu', 'net')) and p not in VALID_COM_WORDS:
+            return False
+    # Allow recognized domain acronyms at count >= 10; otherwise require corpus count >= 30
+    if any(p in DOMAIN_WHITELIST for p in parts) and count >= 10:
+        return True
+    if count < 30:
+        return False
+    return True
+
 def create_lexicon_from_word(seed_word, num_words, model_type='bi'):
-    """Create lexicon from seed word (returns both unigrams and bigrams)"""
+    """Create lexicon from seed word (returns clean unigrams and bigrams)"""
     try:
         model = load_embedding_model('bi')
         if model is None:
@@ -99,10 +136,23 @@ def create_lexicon_from_word(seed_word, num_words, model_type='bi'):
             else:
                 return pd.DataFrame({'Error': [f'Word "{seed_word}" not found in vocabulary']})
 
-        sims = model.wv.most_similar(seed_word_formatted, topn=num_words)
-        df = pd.DataFrame(sims, columns=['Similar Word', 'Similarity Score'])
-        df['Similar Word'] = df['Similar Word'].str.replace('ne2rk', 'network', case=False, regex=False).str.replace('comp1nt', 'component', case=False, regex=False)
-        df['Similarity Score'] = df['Similarity Score'].round(3)
+        raw_sims = model.wv.most_similar(seed_word_formatted, topn=max(num_words * 5, 200))
+        cleaned_sims = []
+        seen_words = set()
+        for w, score in raw_sims:
+            w_fixed = re.sub(r'ne2rk', 'network', w, flags=re.IGNORECASE)
+            w_fixed = re.sub(r'comp1nt', 'component', w_fixed, flags=re.IGNORECASE)
+            try:
+                count = int(model.wv.get_vecattr(w, 'count'))
+            except Exception:
+                count = 100
+            if w_fixed not in seen_words and is_clean_candidate(w_fixed, count):
+                seen_words.add(w_fixed)
+                cleaned_sims.append((w_fixed, round(float(score), 3)))
+            if len(cleaned_sims) >= num_words:
+                break
+
+        df = pd.DataFrame(cleaned_sims, columns=['Similar Word', 'Similarity Score'])
         df.insert(0, 'Word Number', range(1, len(df) + 1))
 
         return df
