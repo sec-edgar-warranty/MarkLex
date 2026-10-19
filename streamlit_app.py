@@ -67,33 +67,37 @@ def create_default_lexicon():
     })
 
 @st.cache_resource
-def load_embedding_model(model_type='uni'):
-    """Load embedding model with caching"""
-    candidates = ['embeddings_8', 'embeddings_bi_grams'] if model_type == 'uni' else ['embeddings_bi_grams', 'embeddings_8']
+def load_embedding_model(model_type='bi'):
+    """Load embedding model with caching (embeddings_bi_grams contains both unigrams and bigrams)"""
+    candidates = ['embeddings_bi_grams', 'embeddings_8'] if model_type == 'bi' else ['embeddings_8', 'embeddings_bi_grams']
     
     for candidate in candidates:
         if os.path.exists(candidate):
             try:
-                with st.spinner(f"Loading {model_type} model... This may take a moment on first run."):
+                with st.spinner(f"Loading embedding model... This may take a moment on first run."):
                     model = Word2Vec.load(candidate)
                 return model
             except Exception as e:
                 st.error(f"Failed to load model: {e}")
     
-    st.error(f"❌ No {model_type} embedding model found!")
+    st.error(f"❌ No embedding model found!")
     return None
 
-def create_lexicon_from_word(seed_word, num_words, model_type='uni'):
-    """Create lexicon from seed word"""
+def create_lexicon_from_word(seed_word, num_words, model_type='bi'):
+    """Create lexicon from seed word (returns both unigrams and bigrams)"""
     try:
-        model = load_embedding_model(model_type)
+        model = load_embedding_model('bi')
         if model is None:
             return pd.DataFrame({'Error': ['Embedding model not found']})
 
-        seed_word_formatted = seed_word.lower().replace(' ', '_')
+        seed_word_formatted = seed_word.strip().lower().replace(' ', '_')
 
         if seed_word_formatted not in model.wv.key_to_index:
-            return pd.DataFrame({'Error': [f'Word "{seed_word}" not found in vocabulary']})
+            fallback_model = load_embedding_model('uni')
+            if fallback_model is not None and seed_word_formatted in fallback_model.wv.key_to_index:
+                model = fallback_model
+            else:
+                return pd.DataFrame({'Error': [f'Word "{seed_word}" not found in vocabulary']})
 
         sims = model.wv.most_similar(seed_word_formatted, topn=num_words)
         df = pd.DataFrame(sims, columns=['Similar Word', 'Similarity Score'])
