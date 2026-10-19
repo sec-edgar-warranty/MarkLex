@@ -97,6 +97,7 @@ def create_lexicon_from_word(seed_word, num_words, model_type='uni'):
 
         sims = model.wv.most_similar(seed_word_formatted, topn=num_words)
         df = pd.DataFrame(sims, columns=['Similar Word', 'Similarity Score'])
+        df['Similar Word'] = df['Similar Word'].str.replace('ne2rk', 'network', case=False, regex=False).str.replace('comp1nt', 'component', case=False, regex=False)
         df['Similarity Score'] = df['Similarity Score'].round(3)
         df.insert(0, 'Word Number', range(1, len(df) + 1))
 
@@ -108,6 +109,8 @@ def create_lexicon_from_word(seed_word, num_words, model_type='uni'):
 # Text processing functions
 def preprocess_text(text):
     text = text.replace("U.S.A.", "USA").replace("U.S.", "US")
+    text = re.sub(r"ne2rk", "network", text, flags=re.IGNORECASE)
+    text = re.sub(r"comp1nt", "component", text, flags=re.IGNORECASE)
     return text
 
 def tokenize_sentences(text, stop_words):
@@ -137,6 +140,13 @@ def clean_text(sentences, stop_words):
             continue
 
     return cleaned_sentences
+
+def clean_keyword(keyword, stop_words):
+    """Apply the same punctuation and stopword filtering to a lexicon keyword as clean_text()."""
+    text = preprocess_text(str(keyword)).lower().strip()
+    text = re.sub(r'[^\w\s]', '', text)
+    words = [word for word in text.split() if word and word not in stop_words and len(word) > 1]
+    return ' '.join(words) if words else ' '.join(text.split())
 
 def generate_ngrams(cleaned_sentences, n):
     ngrams = []
@@ -179,8 +189,9 @@ def analyze_text(text_input, lexicon, stop_words):
 
     # Process each entity
     for entity in lexicon['Entity'].unique():
-        keywords = lexicon[lexicon['Entity'] == entity]['Keyword'].tolist()
-        keywords = [str(k).lower() for k in keywords if pd.notna(k)]
+        raw_keywords = lexicon[lexicon['Entity'] == entity]['Keyword'].tolist()
+        keywords = {clean_keyword(k, stop_words) for k in raw_keywords if pd.notna(k)}
+        keywords.discard('')
 
         entity_matches = []
 
@@ -400,11 +411,12 @@ def main():
         # Instructions
         st.subheader("Instructions")
         st.info("""
-        This section provides a demonstration of the use of the lexicon. Here, we have created a lexicon 
-        that comprises eight dimensions: Marketing, ESG, DEI, Risk & Security, Employee, AI & Data, 
-        Innovation, and Investor Focus. Paste your text in the space provided below and click Analyze Text. 
-        The output table will show you each sentence and the number of words associated with these dimensions. 
-        You can also output this table as a spreadsheet for further analysis.
+        This section provides a demonstration of the use of the lexicon. Here, we have created a hierarchical 
+        lexicon that comprises eight dimensions (and their sub-dimensions): Marketing, ESG, DEI, Risk & Security, 
+        Employee, AI & Data, Innovation, and Investor Focus. Paste your text in the space provided below and click 
+        Analyze Text. The sentence-level output table reports binary (0/1) presence indicators for each dimension 
+        and sub-dimension, alongside a document-level summary table showing the percentage of sentences matching 
+        each dimension. You can also export these tables as spreadsheets for further analysis.
         """)
         
         # Text input
@@ -448,7 +460,19 @@ def main():
         
         # Display analysis results (persistent)
         if st.session_state.analysis_data is not None:
-            st.subheader("Analysis Results")
+            entity_cols = [c for c in st.session_state.analysis_data.columns if c != 'Text']
+            if entity_cols:
+                st.subheader("Document-Level Construct Summary")
+                total_sents = len(st.session_state.analysis_data)
+                summary_df = pd.DataFrame({
+                    'Dimension / Sub-Dimension': entity_cols,
+                    'Matched Sentences': [int(st.session_state.analysis_data[c].sum()) for c in entity_cols],
+                    'Total Sentences': [total_sents] * len(entity_cols),
+                    'Construct Focus (% of Sentences)': [round(100.0 * st.session_state.analysis_data[c].mean(), 2) for c in entity_cols]
+                })
+                st.dataframe(summary_df, use_container_width=True)
+
+            st.subheader("Analysis Results (Sentence-Level Binary 0/1 Indicators)")
             st.dataframe(st.session_state.analysis_data, use_container_width=True)
             
             # Download button
